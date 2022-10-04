@@ -1,0 +1,130 @@
+%This code was made by Adam Johnson and uses MFS to solve the Laplace
+%equation under the Dirichlet boundary condition e^x*sin(y) on the domain
+%(-1,1)^2. The fictitious domain is (-2,2)^2.
+
+
+clear all
+l=15;   %determines the number of collocation points  
+N=4*l;  %size of the system
+n=38;   %determines the number of boundary points are used to approximate the error
+a=2;    %determines the size of the fictitious domain
+ 
+ 
+%first we generate the boundary points z
+i=0;
+for i=0:l 
+    z(i+1,1)=1;
+    z(i+1,2)=-1+(2*i)/l;
+end
+for i=1:l
+    z(i+l+1,1)=1-(2*i)/l;
+    z(i+l+1,2)=1;
+end
+for i=1:l
+    z(i+2*l+1,1)=-1;
+    z(i+2*l+1,2)= 1-(2*i)/l;
+end
+for i=1:l
+    z(i+3*l+1,1)=-1+(2*i)/l;
+    z(i+3*l+1,2)=-1;
+end
+ 
+%Now we generate the source points fic_z
+
+for i=0:l 
+    fic_z(i+1,1)=a;
+    fic_z(i+1,2)=-a+(2*a*i)/l;
+end
+for i=1:l
+    fic_z(i+l+1,1)=a-(2*a*i)/l;
+    fic_z(i+l+1,2)=a;
+end
+for i=1:l
+    fic_z(i+2*l+1,1)=-a;
+    fic_z(i+2*l+1,2)= a-(2*a*i)/l;
+end
+for i=1:l
+    fic_z(i+3*l+1,1)=-a+(2*a*i)/l;
+    fic_z(i+3*l+1,2)=-a;
+end
+ 
+%Next, we generate the MFS matrix Amfs
+
+for i=1:N
+    for j=1:N
+        Amfs(i,j)= -1/(2*pi)*log(sqrt((z(i,1)-fic_z(j,1))^2+(z(i,2)-fic_z(j,2))^2));
+    end
+end
+ 
+
+
+%Now, we generate the vector of boundary values
+
+for i=1:N
+   f_mfs(i)=exp(z(i,1))*sin(z(i,2));
+end
+ 
+%Next, we solve the system to find the MFS coefficients:
+c=Amfs\f_mfs';               %Note: this method may not work and we can instead use a psuedo inverse 
+
+% c=pinv(Amfs)*f_mfs';       %This is using the Penrose psuedo inverse  
+    
+    
+%Next, we consider the error. We first generate points in the domain z_test to
+%evaluate the numerical and true solution
+
+Z=linspace(-1,1,2*n+1);
+i=1;
+while i<2*n+2
+    z_test(i,1)=Z(i);
+    z_test(i,2)=-1;
+    i=i+1;
+end
+
+j=1;
+while i<2*n+1+2*n+1
+    z_test(i,1)=1;
+    z_test(i,2)=Z(j+1);
+    i=i+1;
+    j=j+1;
+end
+
+j=1;
+while i< 2*n+1+4*n+1
+   z_test(i,1)=-Z(j+1);
+   z_test(i,2)=1;
+   i=i+1;
+   j=j+1;
+end
+
+j=1;
+while i<2*n+1+6*n
+   z_test(i,1)=-1;
+   z_test(i,2)=-Z(j+1);
+   i=i+1;
+   j=j+1;
+end
+
+%Now, we calculate the approximate solution u_N
+ 
+
+for i=0:8*n-1
+    for j=1:4*l
+        u_Nterm(j)=c(j)*(-1/(2*pi))*log(sqrt((z_test(i+1,1)-fic_z(j,1))^2+(z_test(i+1,2)-fic_z(j,2))^2));
+    end
+    u_N(i+1)=sum(u_Nterm);
+end
+ 
+%Next, we calculate the exact solution at the domain points x_test
+ 
+for i=1:8*n
+    u_e(i)=exp(z_test(i,1))*sin(z_test(i,2));
+end
+ 
+%Finally, we compute the numerical error
+i=1;
+for i=8*n
+    diff(i)=abs(u_N(i)-u_e(i));
+end
+
+error=max(diff)
